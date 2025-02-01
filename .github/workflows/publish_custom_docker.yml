@@ -17,6 +17,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    environment: Docker Hub
     env:
       GIT_REF: ${{ github.head_ref || github.ref_name }} # ref_name to get tags/branches
     steps:
