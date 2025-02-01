@@ -123,7 +123,7 @@ jobs:
           GIT_REF: ${{ github.head_ref || github.ref_name }}
         run: |
           SANITIZED_REF=$(echo "$GIT_REF" | sed 's/\//-/g')
-          if [ "${{ github.ref_name }}" = "master" ]; then
+          if [ "${{ github.ref_name }}" = "main" ]; then
             TAG="${DOCKER_REPO}:latest-ce"
           else
             TAG="${DOCKER_REPO}:${SANITIZED_REF}-ce"
