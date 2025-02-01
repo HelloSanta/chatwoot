@@ -80,6 +80,7 @@ export default {
   data() {
     return {
       showOptionsMenu: false,
+      santaLogo: '/brand-assets/logo-round.png',
     };
   },
 
@@ -219,7 +220,7 @@ export default {
 <template>
   <aside class="flex h-full">
     <PrimarySidebar
-      :logo-source="globalConfig.logoThumbnail"
+      :logo-source="santaLogo"
       :installation-name="globalConfig.installationName"
       :is-a-custom-branded-instance="isACustomBrandedInstance"
       :account-id="accountId"
