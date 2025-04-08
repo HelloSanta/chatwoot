@@ -37,6 +37,8 @@ import wootConstants from 'dashboard/constants/globals';
 import { LOCAL_STORAGE_KEYS } from 'dashboard/constants/localStorage';
 import { FEATURE_FLAGS } from '../../../featureFlags';
 
+import NextButton from 'dashboard/components-next/button/Button.vue';
+
 export default {
   components: {
     Message,
@@ -44,6 +46,7 @@ export default {
     ReplyBox,
     Banner,
     ConversationLabelSuggestion,
+    NextButton,
   },
   mixins: [inboxMixin],
   props: {
@@ -223,8 +226,11 @@ export default {
       return this.$t('CONVERSATION.CANNOT_REPLY');
     },
     replyWindowLink() {
-      if (this.isAWhatsAppChannel) {
+      if (this.isAFacebookInbox || this.isAInstagramChannel) {
         return REPLY_POLICY.FACEBOOK;
+      }
+      if (this.isAWhatsAppCloudChannel) {
+        return REPLY_POLICY.WHATSAPP_CLOUD;
       }
       if (!this.isAPIInbox) {
         return REPLY_POLICY.TWILIO_WHATSAPP;
@@ -232,7 +238,11 @@ export default {
       return '';
     },
     replyWindowLinkText() {
-      if (this.isAWhatsAppChannel) {
+      if (
+        this.isAWhatsAppChannel ||
+        this.isAFacebookInbox ||
+        this.isAInstagramChannel
+      ) {
         return this.$t('CONVERSATION.24_HOURS_WINDOW');
       }
       if (!this.isAPIInbox) {
@@ -482,19 +492,21 @@ export default {
     <Banner
       v-if="!currentChat.can_reply"
       color-scheme="alert"
-      class="mt-2 mx-2 rounded-lg overflow-hidden"
+      class="mx-2 mt-2 overflow-hidden rounded-lg"
       :banner-message="replyWindowBannerMessage"
       :href-link="replyWindowLink"
       :href-link-text="replyWindowLinkText"
     />
     <div class="flex justify-end">
-      <woot-button
-        variant="smooth"
-        size="tiny"
-        color-scheme="secondary"
-        class="box-border fixed z-10 bg-white border border-r-0 border-solid rounded-bl-calc rtl:rotate-180 rounded-tl-calc border-n-weak"
+      <NextButton
+        faded
+        xs
+        slate
+        class="!rounded-r-none rtl:rotate-180 !rounded-2xl !fixed z-10"
+        :icon="
+          isContactPanelOpen ? 'i-ph-caret-right-fill' : 'i-ph-caret-left-fill'
+        "
         :class="isInboxView ? 'top-52 md:top-40' : 'top-32'"
-        :icon="isRightOrLeftIcon"
         @click="onToggleContactPanel"
       />
     </div>
@@ -613,20 +625,6 @@ export default {
     </div>
   </div>
 </template>
-
-<style scoped>
-@tailwind components;
-
-@layer components {
-  .rounded-bl-calc {
-    border-bottom-left-radius: calc(1.5rem + 1px);
-  }
-
-  .rounded-tl-calc {
-    border-top-left-radius: calc(1.5rem + 1px);
-  }
-}
-</style>
 
 <style scoped lang="scss">
 .modal-mask {
