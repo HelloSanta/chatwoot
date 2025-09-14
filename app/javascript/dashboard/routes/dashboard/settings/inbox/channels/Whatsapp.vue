@@ -1,48 +1,134 @@
-<script>
-import PageHeader from '../../SettingsSubPageHeader.vue';
+<script setup>
+import { computed } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
+import { useStore } from 'vuex';
 import Twilio from './Twilio.vue';
 import ThreeSixtyDialogWhatsapp from './360DialogWhatsapp.vue';
 import CloudWhatsapp from './CloudWhatsapp.vue';
+import WhatsappEmbeddedSignup from './WhatsappEmbeddedSignup.vue';
+import ChannelSelector from 'dashboard/components/ChannelSelector.vue';
+import { FEATURE_FLAGS } from 'dashboard/featureFlags';
 
-export default {
-  components: {
-    PageHeader,
-    Twilio,
-    ThreeSixtyDialogWhatsapp,
-    CloudWhatsapp,
+const route = useRoute();
+const router = useRouter();
+const { t } = useI18n();
+const store = useStore();
+
+const PROVIDER_TYPES = {
+  WHATSAPP: 'whatsapp',
+  TWILIO: 'twilio',
+  WHATSAPP_CLOUD: 'whatsapp_cloud',
+  WHATSAPP_EMBEDDED: 'whatsapp_embedded',
+  THREE_SIXTY_DIALOG: '360dialog',
+};
+
+const hasWhatsappAppId = computed(() => {
+  return (
+    window.chatwootConfig?.whatsappAppId &&
+    window.chatwootConfig.whatsappAppId !== 'none'
+  );
+});
+
+const isWhatsappEmbeddedSignupEnabled = computed(() => {
+  const accountId = route.params.accountId;
+  return store.getters['accounts/isFeatureEnabledonAccount'](
+    accountId,
+    FEATURE_FLAGS.WHATSAPP_EMBEDDED_SIGNUP
+  );
+});
+
+const selectedProvider = computed(() => route.query.provider);
+
+const showProviderSelection = computed(() => !selectedProvider.value);
+
+const showConfiguration = computed(() => Boolean(selectedProvider.value));
+
+const availableProviders = computed(() => [
+  {
+    key: PROVIDER_TYPES.WHATSAPP,
+    title: t('INBOX_MGMT.ADD.WHATSAPP.PROVIDERS.WHATSAPP_CLOUD'),
+    description: t('INBOX_MGMT.ADD.WHATSAPP.PROVIDERS.WHATSAPP_CLOUD_DESC'),
+    icon: 'i-woot-whatsapp',
   },
-  data() {
-    return {
-      provider: 'whatsapp_cloud',
-    };
+  {
+    key: PROVIDER_TYPES.TWILIO,
+    title: t('INBOX_MGMT.ADD.WHATSAPP.PROVIDERS.TWILIO'),
+    description: t('INBOX_MGMT.ADD.WHATSAPP.PROVIDERS.TWILIO_DESC'),
+    icon: 'i-woot-twilio',
   },
+]);
+
+const selectProvider = providerValue => {
+  router.push({
+    name: route.name,
+    params: route.params,
+    query: { provider: providerValue },
+  });
+};
+
+const shouldShowEmbeddedSignup = provider => {
+  // Check if the feature is enabled for the account
+  if (!isWhatsappEmbeddedSignupEnabled.value) {
+    return false;
+  }
+
+  return (
+    (provider === PROVIDER_TYPES.WHATSAPP && hasWhatsappAppId.value) ||
+    provider === PROVIDER_TYPES.WHATSAPP_EMBEDDED
+  );
+};
+
+const shouldShowCloudWhatsapp = provider => {
+  // If embedded signup feature is enabled and app ID is configured, don't show cloud whatsapp
+  if (isWhatsappEmbeddedSignupEnabled.value && hasWhatsappAppId.value) {
+    return false;
+  }
+
+  // Show cloud whatsapp when:
+  // 1. Provider is whatsapp AND
+  // 2. Either no app ID is configured OR embedded signup feature is disabled
+  return provider === PROVIDER_TYPES.WHATSAPP;
 };
 </script>
 
 <template>
-  <div
-    class="border border-n-weak bg-n-solid-1 rounded-t-lg border-b-0 h-full w-full p-6 col-span-6 overflow-auto"
-  >
-    <PageHeader
-      :header-title="$t('INBOX_MGMT.ADD.WHATSAPP.TITLE')"
-      :header-content="$t('INBOX_MGMT.ADD.WHATSAPP.DESC')"
-    />
-    <div class="flex-shrink-0 flex-grow-0">
-      <label>
-        {{ $t('INBOX_MGMT.ADD.WHATSAPP.PROVIDERS.LABEL') }}
-        <select v-model="provider">
-          <option value="whatsapp_cloud">
-            {{ $t('INBOX_MGMT.ADD.WHATSAPP.PROVIDERS.WHATSAPP_CLOUD') }}
-          </option>
-          <option value="twilio">
-            {{ $t('INBOX_MGMT.ADD.WHATSAPP.PROVIDERS.TWILIO') }}
-          </option>
-        </select>
-      </label>
+  <div class="overflow-auto col-span-6 p-6 w-full h-full">
+    <div v-if="showProviderSelection">
+      <div class="mb-10 text-left">
+        <h1 class="mb-2 text-lg font-medium text-slate-12">
+          {{ $t('INBOX_MGMT.ADD.WHATSAPP.SELECT_PROVIDER.TITLE') }}
+        </h1>
+        <p class="text-sm leading-relaxed text-slate-11">
+          {{ $t('INBOX_MGMT.ADD.WHATSAPP.SELECT_PROVIDER.DESCRIPTION') }}
+        </p>
+      </div>
+
+      <div class="flex gap-6 justify-start">
+        <ChannelSelector
+          v-for="provider in availableProviders"
+          :key="provider.key"
+          :title="provider.title"
+          :description="provider.description"
+          :icon="provider.icon"
+          @click="selectProvider(provider.key)"
+        />
+      </div>
     </div>
 
-    <Twilio v-if="provider === 'twilio'" type="whatsapp" />
-    <ThreeSixtyDialogWhatsapp v-else-if="provider === '360dialog'" />
-    <CloudWhatsapp v-else />
+    <div v-else-if="showConfiguration">
+      <WhatsappEmbeddedSignup
+        v-if="shouldShowEmbeddedSignup(selectedProvider)"
+      />
+      <CloudWhatsapp v-else-if="shouldShowCloudWhatsapp(selectedProvider)" />
+      <Twilio
+        v-else-if="selectedProvider === PROVIDER_TYPES.TWILIO"
+        type="whatsapp"
+      />
+      <ThreeSixtyDialogWhatsapp
+        v-else-if="selectedProvider === PROVIDER_TYPES.THREE_SIXTY_DIALOG"
+      />
+      <CloudWhatsapp v-else />
+    </div>
   </div>
 </template>
